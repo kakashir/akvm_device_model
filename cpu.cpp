@@ -71,10 +71,8 @@ void* Cpu::vcpu_thread(void *_cpu)
 	sem_wait(&cpu->m_run);
 
 	r = accel->create_vcpu();
-	if (r) {
-		printf("error: %d\n", r);
+	if (r)
 		goto exit;
-	}
 
 	r = accel->get_vcpu_runtime_info(&rt);
 	while(!cpu->m_should_exit) {
@@ -84,7 +82,8 @@ void* Cpu::vcpu_thread(void *_cpu)
 		}
 
 		r = accel->run_vcpu();
-		std::cout<<"running: r:"<<r<<std::endl;
+		if (r)
+			printf("run_vcpu: r:%d errno:%d\n", r, -errno);
 	}
 exit:
 	sem_post(&cpu->m_run);

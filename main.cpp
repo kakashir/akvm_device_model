@@ -6,9 +6,54 @@
 #include "device.hpp"
 #include "memory.hpp"
 #include "accel.hpp"
+#include "platform.h"
 
 Akvm g_akvm;
-Memory g_memory;
+Memory *memory;
+
+static struct memory_config {
+	gpa gpa_start;
+	size_t size;
+} g_mem_config[] = {
+	{ .gpa_start = MEM_BELOW_1M_START,
+	  .size = MEM_BELOW_1M_SIZE
+	},
+	{ .gpa_start = MEM_BELOW_4G_START,
+	  .size = MEM_BELOW_4G_END - MEM_BELOW_4G_START
+	},
+	{ .gpa_start = MEM_ABOVE_4G_START,
+	  .size = 1ULL * 1024  * 1024 * 1024
+	},
+};
+
+static int g_mem_config_count = sizeof(g_mem_config)/sizeof(g_mem_config[0]);
+
+static int __alloc_memory(struct Memory *memory,
+			  struct memory_config *mem_config, int count)
+{
+	int r;
+	for (int i = 0; i < count; ++i) {
+		r = memory[i].alloc_memory(mem_config[i].gpa_start,
+					   mem_config[i].size,
+					   AKVM_MEMORY_SLOT_ALIGN);
+		if (r)
+			return r;
+	}
+
+	return 0;
+}
+
+static int __install_memory(Akvm &akvm, Memory *memory, int count)
+{
+	int r;
+	for (int i = 0; i < count; ++i) {
+		r = akvm.add_memory(memory[i].gpa_start(), memory[i].size(),
+				    memory[i].hva_start());
+		if (r)
+			return r;
+	}
+	return 0;
+}
 
 static int __load_guest_code(const char *path, void *p, long size)
 {
@@ -53,15 +98,21 @@ int main(int argc, char* argv[])
 		return r;
 	}
 
-	r = g_memory.alloc_memory(0, 1024 * 1024, AKVM_MEMORY_SLOT_ALIGN);
+	memory = new Memory[g_mem_config_count];
+	if (!memory) {
+		printf("g_akvm: initialize memory array failed\n");
+		return -ENOMEM;
+	}
+
+	r = __alloc_memory(memory, g_mem_config, g_mem_config_count);
 	if (r) {
 		printf("memory allocat failed: %d\n", r);
 		return r;
 	}
 
 	r = __load_guest_code("/home/yy/src/ld_script/binary",
-			      reinterpret_cast<void*>(g_memory.hva_start()),
-			      g_memory.size());
+			      reinterpret_cast<void*>(memory[0].hva_start()),
+			      memory[0].size());
 	if (r) {
 		printf("load guest code failed: %d\n", r);
 		return r;
@@ -72,8 +123,8 @@ int main(int argc, char* argv[])
 		printf("akvm create vm failed: %d\n", r);
 		return r;
 	}
-	r = g_akvm.add_memory(g_memory.gpa_start(), g_memory.size(),
-			      g_memory.hva_start());
+
+	r = __install_memory(g_akvm, memory, g_mem_config_count);
 	if (r) {
 		printf("akvm add memory failed: %d\n", r);
 		return r;
@@ -87,6 +138,8 @@ int main(int argc, char* argv[])
 
 	cpu.run();
 	cpu.wait();
+
+	delete[] memory;
 
 	return 0;
 }

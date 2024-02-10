@@ -1,0 +1,141 @@
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+
+#include <unistd.h>
+#include <fcntl.h>
+#include <cerrno>
+
+#include "accel.hpp"
+
+#define AKVM_PATH "/dev/akvm"
+
+Akvm::Akvm():vcpu_fd(-1)
+{;}
+
+Akvm::~Akvm()
+{;}
+
+int Akvm::initialize(void)
+{
+	int fd;
+
+	if (Akvm::dev_fd >= 0)
+		return 0;
+
+	fd = open(AKVM_PATH, 0);
+	if (fd < 0)
+		return fd;
+
+	Akvm::dev_fd = fd;
+	return 0;
+}
+
+void Akvm::destroy(void)
+{
+	if (Akvm::dev_fd >= 0) {
+		close(Akvm::dev_fd);
+		Akvm::dev_fd = -1;
+	}
+
+	if (Akvm::vm_fd >= 0) {
+		close(Akvm::vm_fd);
+		Akvm::vm_fd = -1;
+	}
+
+	if (vcpu_fd >= 0) {
+		close(vcpu_fd);
+		vcpu_fd = -1;
+	}
+}
+
+int Akvm::create_vm(void)
+{
+	int fd;
+
+	if (Akvm::dev_fd < 0)
+		return -EINVAL;
+
+	fd = ioctl(Akvm::dev_fd, AKVM_CREATE_VM);
+	if (fd < 0)
+		return fd;
+
+	Akvm::vm_fd = fd;
+	return 0;
+}
+
+int Akvm::create_vcpu(void)
+{
+	int fd;
+
+	if (Akvm::vm_fd < 0)
+		return -EINVAL;
+
+	fd = ioctl(Akvm::vm_fd, AKVM_CREATE_VCPU);
+	if (fd < 0)
+		return fd;
+
+	vcpu_fd = fd;
+	return 0;
+
+}
+
+int Akvm::run_vcpu(void)
+{
+	if (vcpu_fd < 0)
+		return -EINVAL;
+	return ioctl(vcpu_fd, AKVM_RUN);
+}
+
+int Akvm::add_memory(gpa gpa_start, size_t size, hva hva_start)
+{
+	struct akvm_memory_slot slot = {
+		.hva = hva_start,
+		.gpa = gpa_start,
+		.size = size,
+		.flags = 0,
+	};
+
+	if (Akvm::vm_fd < 0)
+		return -EINVAL;
+
+	return ioctl(Akvm::vm_fd, AKVM_MEMORY_SLOT_ADD, &slot);
+}
+
+int Akvm::remove_memory(gpa gpa_start, size_t size, hva hva_start)
+{
+	struct akvm_memory_slot slot = {
+		.hva = hva_start,
+		.gpa = gpa_start,
+		.size = size,
+		.flags = 0,
+	};
+
+	if (Akvm::vm_fd < 0)
+		return -EINVAL;
+
+	return ioctl(Akvm::vm_fd, AKVM_MEMORY_SLOT_REMOVE, &slot);
+}
+
+int Akvm::get_vcpu_runtime_info(struct akvm_vcpu_runtime** runtime)
+{
+	struct akvm_vcpu_runtime* rt;
+
+	if (vcpu_fd < 0)
+		return -EINVAL;
+	if (!runtime)
+		return -EINVAL;
+
+	rt = reinterpret_cast<struct akvm_vcpu_runtime*>(
+		mmap(NULL, sizeof(*runtime), PROT_READ | PROT_WRITE,
+		     MAP_SHARED, vcpu_fd,
+		     AKVM_VCPU_RUNTIME_PG_OFF));
+
+	if (rt == MAP_FAILED)
+		return -errno;
+
+	*runtime = rt;
+	return 0;
+}
+
+int Akvm::dev_fd = -1;
+int Akvm::vm_fd = -1;

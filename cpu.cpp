@@ -1,0 +1,92 @@
+#include <cerrno>
+#include <iostream>
+#include "common.hpp"
+#include "cpu.hpp"
+#include "accel.hpp"
+
+Cpu::Cpu(void):m_should_exit(false),
+	       m_created(false),m_running(false)
+{;}
+
+Cpu::~Cpu(void)
+{
+	destroy();
+}
+
+int Cpu::create(void *argc)
+{
+	int r;
+
+	m_argc = argc;
+	sem_init(&m_run, 0, 0);
+	r = pthread_create(&m_thread, NULL,
+			   vcpu_thread, this);
+	if (r)
+		return r;
+
+	m_created = true;
+	m_running = false;
+	return 0;
+}
+
+int Cpu::run(void)
+{
+	if (!m_created)
+		return -EINVAL;
+	if (m_running)
+		return -EINVAL;
+
+	sem_post(&m_run);
+	m_running = true;
+	return 0;
+}
+
+void Cpu::destroy(void)
+{
+	if (!m_created)
+		return;
+	m_should_exit = true;
+	if (!m_running)
+		sem_post(&m_run);
+	else
+		sem_wait(&m_run);
+	m_created = false;
+	m_running = false;
+}
+
+void Cpu::wait(void)
+{
+	void *unused;
+	if (m_created)
+		pthread_join(m_thread, &unused);
+}
+
+void* Cpu::vcpu_thread(void *_cpu)
+{
+	int r;
+	struct akvm_vcpu_runtime *rt;
+	Cpu *cpu = reinterpret_cast<Cpu*>(_cpu);
+	Akvm *accel = reinterpret_cast<Akvm*>(cpu->m_argc);
+
+	sem_wait(&cpu->m_run);
+
+	r = accel->create_vcpu();
+	if (r) {
+		printf("error: %d\n", r);
+		goto exit;
+	}
+
+	r = accel->get_vcpu_runtime_info(&rt);
+	while(!cpu->m_should_exit) {
+		if (r) {
+			cpu->m_should_exit = true;
+			continue;
+		}
+
+		r = accel->run_vcpu();
+		std::cout<<"running: r:"<<r<<std::endl;
+	}
+exit:
+	sem_post(&cpu->m_run);
+	return NULL;
+}

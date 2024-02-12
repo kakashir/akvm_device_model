@@ -62,6 +62,41 @@ void Cpu::wait(void)
 		pthread_join(m_thread, &unused);
 }
 
+int Cpu::handle_exit(struct akvm_vcpu_runtime *runtime)
+{
+	switch(runtime->exit_reason) {
+	case AKVM_EXIT_VM_SERVICE:
+		return handle_vm_service(runtime);
+	default:
+		printf("Unimplemented exit reason: %d\n", runtime->exit_reason);
+		return -ENOTSUP;
+	}
+}
+
+int Cpu::handle_vm_service(struct akvm_vcpu_runtime *runtime)
+{
+#define VM_SERVICE_DEBUG 0xfeULL
+#define VM_SERVICE_PANIC 0xffULL
+
+	__u64 type = runtime->vm_service.type;
+
+	if (type == VM_SERVICE_DEBUG || type == VM_SERVICE_PANIC) {
+		printf("vcpu %s:\n",
+		       type == VM_SERVICE_DEBUG ? "DEBUG" : "PANIC");
+		printf("  arg0: 0x%lx\n", runtime->vm_service.in_out[0]);
+		printf("  arg1: 0x%lx\n", runtime->vm_service.in_out[1]);
+		printf("  arg2: 0x%lx\n", runtime->vm_service.in_out[2]);
+		printf("  arg3: 0x%lx\n", runtime->vm_service.in_out[3]);
+		printf("  arg4: 0x%lx\n", runtime->vm_service.in_out[4]);
+		printf("  arg5: 0x%lx\n", runtime->vm_service.in_out[5]);
+
+		return type == VM_SERVICE_DEBUG ? 0 : 1;
+	}
+
+	printf("unsupported vm service type: %d\n", type);
+	return -ENOTSUP;
+}
+
 void* Cpu::vcpu_thread(void *_cpu)
 {
 	int r;
@@ -87,8 +122,14 @@ void* Cpu::vcpu_thread(void *_cpu)
 		}
 
 		r = accel->run_vcpu();
-		if (r)
+		if (!r)
+			continue;
+		if (r < 0) {
 			printf("run_vcpu: r:%d errno:%d\n", r, -errno);
+			cpu->m_should_exit = true;
+			continue;
+		}
+		r = cpu->handle_exit(rt);
 	}
 exit:
 	sem_post(&cpu->m_run);

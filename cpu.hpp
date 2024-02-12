@@ -27,6 +27,8 @@ public:
 	virtual void set_startup_rip(gpa val)
 	{ m_startup_rip = val; }
 private:
+	int handle_exit(struct akvm_vcpu_runtime *runtime);
+	int handle_vm_service(struct akvm_vcpu_runtime *runtime);
 	static void* vcpu_thread(void *cpu);
 private:
 	pthread_t m_thread;

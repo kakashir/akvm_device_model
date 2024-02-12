@@ -18,6 +18,7 @@ public:
 	int add_memory(gpa gpa_start, size_t size, hva hva_start);
 	int remove_memory(gpa gpa_start, size_t size, hva hva_start);
 	int get_vcpu_runtime_info(struct akvm_vcpu_runtime** runtime);
+	void set_startup_rip(gpa rip);
 private:
 	static int dev_fd;
 	static int vm_fd;

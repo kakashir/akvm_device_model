@@ -12,6 +12,7 @@ interface Icpu {
 	virtual int run(void) = 0;
 	virtual void destroy(void) = 0;
 	virtual void wait(void) = 0;
+	virtual void set_startup_rip(gpa val) = 0;
 };
 
 class Cpu : public Icpu {
@@ -23,6 +24,8 @@ public:
 	virtual int run(void);
 	virtual void destroy(void);
 	virtual void wait(void);
+	virtual void set_startup_rip(gpa val)
+	{ m_startup_rip = val; }
 private:
 	static void* vcpu_thread(void *cpu);
 private:
@@ -32,6 +35,7 @@ private:
 	volatile bool m_should_exit;
 	bool m_created;
 	bool m_running;
+	gpa m_startup_rip;
 
 };
 

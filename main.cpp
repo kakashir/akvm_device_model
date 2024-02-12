@@ -71,7 +71,8 @@ static Memory* __find_memory_range(Memory *memory, int count,
 	return NULL;
 }
 
-static int __load_elf_guest_code(const char *path, struct Memory *memory, int count)
+static int __load_elf_guest_code(const char *path, struct Memory *memory, int count,
+				 gpa &startup_rip)
 {
 	int r = 0;
 	FILE *fp;
@@ -165,7 +166,9 @@ static int __load_elf_guest_code(const char *path, struct Memory *memory, int co
 		       elf_phdr.p_filesz, elf_phdr.p_memsz,
 		       elf_phdr.p_align, mem->gpa_start(), mem->gpa_start() + mem->size());
 	}
+
 exit_fp:
+	startup_rip = elf_hdr.e_entry;
 	fclose(fp);
 	return r;
 }
@@ -174,6 +177,7 @@ int main(int argc, char* argv[])
 {
 	int r;
 	Cpu cpu;
+	gpa startup_rip;
 
 	r = g_akvm.initialize();
 	if (r) {
@@ -194,7 +198,7 @@ int main(int argc, char* argv[])
 	}
 
 	r = __load_elf_guest_code("/home/yy/src/akvm_guest/binary",
-				  memory, g_mem_config_count);
+				  memory, g_mem_config_count, startup_rip);
 	if (r) {
 		printf("load guest code failed: %d\n", r);
 		return r;
@@ -218,6 +222,7 @@ int main(int argc, char* argv[])
 		return r;
 	}
 
+	cpu.set_startup_rip(startup_rip);
 	cpu.run();
 	cpu.wait();
 

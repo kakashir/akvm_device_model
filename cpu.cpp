@@ -5,7 +5,8 @@
 #include "accel.hpp"
 
 Cpu::Cpu(void):m_should_exit(false),
-	       m_created(false),m_running(false)
+	       m_created(false),m_running(false),
+	       m_startup_rip(0)
 {;}
 
 Cpu::~Cpu(void)
@@ -75,6 +76,10 @@ void* Cpu::vcpu_thread(void *_cpu)
 		goto exit;
 
 	r = accel->get_vcpu_runtime_info(&rt);
+	if (r)
+		goto exit;
+
+	accel->set_startup_rip(cpu->m_startup_rip);
 	while(!cpu->m_should_exit) {
 		if (r) {
 			cpu->m_should_exit = true;

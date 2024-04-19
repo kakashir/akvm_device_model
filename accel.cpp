@@ -4,8 +4,11 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <cerrno>
+#include <cstdlib>
+#include <cstdio>
 
 #include "accel.hpp"
+#include "linux_header/include/linux/akvm.h"
 
 #define AKVM_PATH "/dev/akvm"
 
@@ -46,6 +49,54 @@ void Akvm::destroy(void)
 		close(vcpu_fd);
 		vcpu_fd = -1;
 	}
+}
+
+struct akvm_cpuid* Akvm::get_supported_cpuid(void)
+{
+	struct akvm_cpuid *data = NULL;
+	struct akvm_cpuid *null = NULL;
+	struct akvm_cpuid *r_cpuid;
+	int r;
+
+	if (cpuid)
+		return cpuid;
+
+	data = (akvm_cpuid*)calloc(1, sizeof(*data));
+	if (!data) {
+		printf("Failed to memory alloctation cpuid data\n");
+		_exit(-1);
+	}
+
+	data->count = 1;
+	do  {
+		data->count *= 2;
+		free(data->entry);
+		data->entry = (struct akvm_cpuid_entry *)
+			malloc(data->count * sizeof(data->entry[0]));
+		if (!data->entry) {
+			printf("Failed to memory alloctation cpuid entry\n");
+			_exit(-1);
+		}
+		printf("data->count:%d\n", data->count);
+
+		r = ioctl(Akvm::dev_fd, AKVM_GET_CPUID, data);
+	} while (r < 0 && errno == E2BIG);
+
+	if (r < 0) {
+		printf("Error code: %d\n", errno);
+		r_cpuid = NULL;
+		goto exit_free;
+	}
+
+	if (__atomic_compare_exchange_n(&cpuid, &null, data, false,
+					__ATOMIC_RELAXED, __ATOMIC_RELAXED))
+		return data;
+
+	r_cpuid = cpuid;
+exit_free:
+	free(data->entry);
+	free(data);
+	return r_cpuid;
 }
 
 int Akvm::create_vm(void)
@@ -147,3 +198,4 @@ void Akvm::set_startup_rip(gpa rip)
 
 int Akvm::dev_fd = -1;
 int Akvm::vm_fd = -1;
+struct akvm_cpuid* Akvm::cpuid;

@@ -11,6 +11,7 @@ public:
 public:
 	int initialize(void);
 	void destroy(void);
+	struct akvm_cpuid* get_supported_cpuid(void);
 
 	int create_vm(void);
 	int create_vcpu(void);
@@ -22,6 +23,7 @@ public:
 private:
 	static int dev_fd;
 	static int vm_fd;
+	static struct akvm_cpuid *cpuid;
 	int vcpu_fd;
 };
 

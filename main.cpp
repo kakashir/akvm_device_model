@@ -9,14 +9,12 @@
 #include "memory.hpp"
 #include "accel.hpp"
 #include "platform.h"
+#include "memoryhub.hpp"
 
 Akvm g_akvm;
-Memory *memory;
+MemoryHub g_memoryhub;
 
-static struct memory_config {
-	gpa gpa_start;
-	size_t size;
-} g_mem_config[] = {
+std::vector<memory_config> g_mem_config = {
 	{ .gpa_start = MEM_BELOW_1M_START,
 	  .size = MEM_BELOW_1M_SIZE
 	},
@@ -28,50 +26,25 @@ static struct memory_config {
 	},
 };
 
-static int g_mem_config_count = sizeof(g_mem_config)/sizeof(g_mem_config[0]);
-
-static int __alloc_memory(Memory *memory,
-			  struct memory_config *mem_config, int count)
+static int install_memory(MemoryHub &memoryhub, Akvm &akvm)
 {
-	int r;
-	for (int i = 0; i < count; ++i) {
-		r = memory[i].alloc_memory(mem_config[i].gpa_start,
-					   mem_config[i].size,
-					   AKVM_MEMORY_SLOT_ALIGN);
-		if (r)
-			return r;
-	}
+	struct T {
+		T(Akvm &akvm):_akvm(akvm),r(0) {;}
+		void operator() (Imemory *memory) {
+			int _r = _akvm.add_memory(memory->gpa_start(),
+						  memory->size(),
+						  memory->hva_start());
+			r |= _r;
+		}
+		Akvm &_akvm;
+		int r;
+	} installer(akvm);
 
-	return 0;
+	memoryhub.for_each(installer);
+	return installer.r;
 }
 
-static int __install_memory(Akvm &akvm, Memory *memory, int count)
-{
-	int r;
-	for (int i = 0; i < count; ++i) {
-		r = akvm.add_memory(memory[i].gpa_start(), memory[i].size(),
-				    memory[i].hva_start());
-		if (r)
-			return r;
-	}
-	return 0;
-}
-
-static Memory* __find_memory_range(Memory *memory, int count,
-					  gpa start, gpa size)
-{
-	for (int i = 0; i < count; ++i) {
-		gpa end = start + size;
-		gpa memory_start = memory[i].gpa_start();
-		gpa memory_end = memory[i].gpa_start() + memory[i].size();
-
-		if (start >= memory_start && end < memory_end)
-			return &memory[i];
-	}
-	return NULL;
-}
-
-static int __load_elf_guest_code(const char *path, struct Memory *memory, int count,
+static int __load_elf_guest_code(const char *path, MemoryHub &memoryhub,
 				 gpa &startup_rip)
 {
 	int r = 0;
@@ -82,7 +55,8 @@ static int __load_elf_guest_code(const char *path, struct Memory *memory, int co
 	Elf64_Phdr elf_phdr;
 	unsigned char *guest_mem;
 	gpa guest_mem_start;
-	Memory *mem;
+	Imemory *mem;
+	std::vector<Imemory*> found;
 
 	fp = fopen(path, "r");
 	if (!fp)
@@ -131,8 +105,14 @@ static int __load_elf_guest_code(const char *path, struct Memory *memory, int co
 		if (elf_phdr.p_type != PT_LOAD)
 			continue;
 
-		mem = __find_memory_range(memory, count, elf_phdr.p_paddr,
-					  std::max(elf_phdr.p_memsz, elf_phdr.p_filesz));
+		if (!memoryhub.find_memory(elf_phdr.p_paddr,
+					   std::max(elf_phdr.p_memsz, elf_phdr.p_filesz), found) ||
+						found.size() > 1) {
+			r = -8;
+			goto exit_fp;
+		}
+
+		mem = found[0];
 		if (!mem) {
 			r = -8;
 			goto exit_fp;
@@ -179,26 +159,22 @@ int main(int argc, char* argv[])
 	Cpu cpu;
 	gpa startup_rip;
 
+
 	r = g_akvm.initialize();
 	if (r) {
 		printf("g_akvm: initialize failed: %d\n", r);
 		return r;
 	}
 
-	memory = new Memory[g_mem_config_count];
-	if (!memory) {
-		printf("g_akvm: initialize memory array failed\n");
-		return -ENOMEM;
-	}
-
-	r = __alloc_memory(memory, g_mem_config, g_mem_config_count);
+	r = g_memoryhub.alloc_memory(g_mem_config);
 	if (r) {
 		printf("memory allocat failed: %d\n", r);
 		return r;
 	}
 
+
 	r = __load_elf_guest_code("/home/yy/src/akvm_guest/binary",
-				  memory, g_mem_config_count, startup_rip);
+				  g_memoryhub, startup_rip);
 	if (r) {
 		printf("load guest code failed: %d\n", r);
 		return r;
@@ -210,7 +186,7 @@ int main(int argc, char* argv[])
 		return r;
 	}
 
-	r = __install_memory(g_akvm, memory, g_mem_config_count);
+	r = install_memory(g_memoryhub, g_akvm);
 	if (r) {
 		printf("akvm add memory failed: %d\n", r);
 		return r;
@@ -225,8 +201,6 @@ int main(int argc, char* argv[])
 	cpu.set_startup_rip(startup_rip);
 	cpu.run();
 	cpu.wait();
-
-	delete[] memory;
 
 	return 0;
 }

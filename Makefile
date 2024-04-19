@@ -1,5 +1,5 @@
 ROOT_DIR = $(shell pwd)
-objects = main.o iohub.o memory.o cpu.o accel.o memoryhub.o
+objects = main.o iohub.o memory.o cpu.o accel.o memoryhub.o guest_loader.o
 
 .PHONY all: akvm_dm
 

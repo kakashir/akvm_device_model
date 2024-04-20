@@ -40,6 +40,25 @@ static int install_memory(MemoryHub &memoryhub, Akvm &akvm)
 	return installer.r;
 }
 
+static void __dump_akvm_supported_cpuid(void)
+{
+	struct akvm_cpuid *cpuid;
+
+	cpuid = g_akvm.get_supported_cpuid();
+	if (!cpuid) {
+		printf("failed to got cpuid\n");
+		return;
+	}
+
+	printf("Dump AKVM supported cpuid:\n");
+	for (int i = 0; i < cpuid->count; ++i)
+		printf("l:0%x s:0x%x eax:0x%x ebx:0x%x ecx:0x%x edx:0x%x\n",
+		       cpuid->entry[i].leaf,
+		       cpuid->entry[i].sub_leaf,
+		       cpuid->entry[i].eax, cpuid->entry[i].ebx,
+		       cpuid->entry[i].ecx, cpuid->entry[i].edx);
+	printf("Dump AKVM supported cpuid end\n");
+}
 
 int main(int argc, char* argv[])
 {
@@ -52,6 +71,7 @@ int main(int argc, char* argv[])
 		printf("g_akvm: initialize failed: %d\n", r);
 		return r;
 	}
+	__dump_akvm_supported_cpuid();
 
 	r = get_memoryhub().alloc_memory(g_mem_config);
 	if (r) {

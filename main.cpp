@@ -9,7 +9,6 @@
 #include "guest_loader.hpp"
 
 Akvm g_akvm;
-MemoryHub g_memoryhub;
 
 std::vector<memory_config> g_mem_config = {
 	{ .gpa_start = MEM_BELOW_1M_START,
@@ -54,14 +53,14 @@ int main(int argc, char* argv[])
 		return r;
 	}
 
-	r = g_memoryhub.alloc_memory(g_mem_config);
+	r = get_memoryhub().alloc_memory(g_mem_config);
 	if (r) {
 		printf("memory allocat failed: %d\n", r);
 		return r;
 	}
 
 	r = load_elf_guest_code("/home/yy/src/akvm_guest/binary",
-				g_memoryhub, startup_rip);
+				get_memoryhub(), startup_rip);
 	if (r) {
 		printf("load guest code failed: %d\n", r);
 		return r;
@@ -73,7 +72,7 @@ int main(int argc, char* argv[])
 		return r;
 	}
 
-	r = install_memory(g_memoryhub, g_akvm);
+	r = install_memory(get_memoryhub(), g_akvm);
 	if (r) {
 		printf("akvm add memory failed: %d\n", r);
 		return r;

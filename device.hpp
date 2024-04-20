@@ -3,20 +3,18 @@
 
 #include "common.hpp"
 
-interface Idevice {
-	virtual ~Idevice() = 0;
-	virtual int handle_port_io(unsigned long type,
-				   unsigned long size,
-				   unsigned long &val) = 0;
-	virtual int handle_mmio(unsigned long type,
-				unsigned long size,
-				unsigned long &val) = 0;
+#define DEVICE_IO_IN
+#define DEVICE_IO_OUT
 
-	/*
-	  interface to expose the "detail" to hw_cfg interface is
-	  not easy to define... let's think it more before add the
-	  definition
-	 */
+interface Idevice {
+	virtual ~Idevice() {;}
+	virtual int handle_port_write(gpa addr, u64 size, u64 val) = 0;
+	virtual int handle_port_read(gpa addr, u64 size, u64 &val) = 0;
+	virtual int handle_mmio_write(gpa addr, u64 size, u64 val) = 0;
+	virtual int handle_mmio_read(gpa addr, u64 size, u64 &val) = 0;
+
+	virtual gpa start_addr(void) const = 0;
+	virtual gpa end_addr(void) const = 0;
 };
 
 #endif

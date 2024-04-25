@@ -5,10 +5,14 @@
 #include "device.hpp"
 #include "memory.hpp"
 #include "accel.hpp"
+#include "device_serial.hpp"
 #include "memoryhub.hpp"
+#include "device_hub.hpp"
 #include "guest_loader.hpp"
 
+
 Akvm g_akvm;
+DeviceSerial g_serial;
 
 std::vector<memory_config> g_mem_config = {
 	{ .gpa_start = MEM_BELOW_1M_START,
@@ -60,6 +64,19 @@ static void __dump_akvm_supported_cpuid(void)
 	printf("Dump AKVM supported cpuid end\n");
 }
 
+static int setup_platform(void)
+{
+	int r;
+
+	r = get_memoryhub().alloc_memory(g_mem_config);
+	if (r) {
+		printf("memory allocat failed: %d\n", r);
+		return r;
+	}
+
+	return DeviceHub::instance().register_device(&g_serial);
+}
+
 int main(int argc, char* argv[])
 {
 	int r;
@@ -73,9 +90,9 @@ int main(int argc, char* argv[])
 	}
 	__dump_akvm_supported_cpuid();
 
-	r = get_memoryhub().alloc_memory(g_mem_config);
+	r = setup_platform();
 	if (r) {
-		printf("memory allocat failed: %d\n", r);
+		printf("setup platform failed: %d\n");
 		return r;
 	}
 

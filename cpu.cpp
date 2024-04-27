@@ -67,9 +67,11 @@ int Cpu::handle_exit(struct akvm_vcpu_runtime *runtime)
 {
 	switch(runtime->exit_reason) {
 	case AKVM_EXIT_VM_SERVICE:
-		return handle_vm_service(runtime->vm_service.type,
-					 runtime->vm_service.in_out,
-					 runtime->vm_service.in_out_count);
+		runtime->vm_service.ret =
+			handle_vm_service(runtime->vm_service.type,
+					  runtime->vm_service.in_out,
+					  runtime->vm_service.in_out_count);
+		return 0;
 	default:
 		printf("Unimplemented exit reason: %d\n", runtime->exit_reason);
 		return -ENOTSUP;

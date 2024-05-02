@@ -6,6 +6,7 @@
 #include "memory.hpp"
 #include "accel.hpp"
 #include "device_serial.hpp"
+#include "device_hwcfg.hpp"
 #include "memoryhub.hpp"
 #include "device_hub.hpp"
 #include "guest_loader.hpp"
@@ -13,6 +14,7 @@
 
 Akvm g_akvm;
 DeviceSerial g_serial;
+DeviceHwcfg g_hwcfg;
 
 std::vector<memory_config> g_mem_config = {
 	{ .gpa_start = MEM_BELOW_1M_START,
@@ -67,6 +69,7 @@ static void __dump_akvm_supported_cpuid(void)
 static int setup_platform(void)
 {
 	int r;
+	DeviceHub &d = DeviceHub::instance();
 
 	r = get_memoryhub().alloc_memory(g_mem_config);
 	if (r) {
@@ -74,7 +77,10 @@ static int setup_platform(void)
 		return r;
 	}
 
-	return DeviceHub::instance().register_device(&g_serial);
+	r = d.register_device(&g_serial);
+	if (r)
+		return r;
+	return d.register_device(&g_hwcfg);
 }
 
 int main(int argc, char* argv[])

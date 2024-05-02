@@ -17,5 +17,6 @@ extern "C" {
 typedef unsigned long gpa;
 typedef unsigned long hva;
 typedef __u64 u64;
+typedef __u32 u32;
 
 #endif

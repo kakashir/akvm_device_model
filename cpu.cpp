@@ -7,6 +7,7 @@
 
 Cpu::Cpu(void):m_should_exit(false),
 	       m_created(false),m_running(false),
+	       m_accel(NULL),
 	       m_startup_rip(0)
 {;}
 
@@ -15,11 +16,10 @@ Cpu::~Cpu(void)
 	destroy();
 }
 
-int Cpu::create(void *argc)
+int Cpu::create(Akvm *accel)
 {
 	int r;
 
-	m_argc = argc;
 	sem_init(&m_run, 0, 0);
 	r = pthread_create(&m_thread, NULL,
 			   vcpu_thread, this);
@@ -28,6 +28,7 @@ int Cpu::create(void *argc)
 
 	m_created = true;
 	m_running = false;
+	m_accel = accel;
 	return 0;
 }
 
@@ -83,7 +84,7 @@ void* Cpu::vcpu_thread(void *_cpu)
 	int r;
 	struct akvm_vcpu_runtime *rt;
 	Cpu *cpu = reinterpret_cast<Cpu*>(_cpu);
-	Akvm *accel = reinterpret_cast<Akvm*>(cpu->m_argc);
+	Akvm *accel = cpu->m_accel;
 
 	sem_wait(&cpu->m_run);
 

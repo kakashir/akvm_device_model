@@ -5,10 +5,11 @@
 #include <semaphore.h>
 
 #include "common.hpp"
+#include "accel.hpp"
 
 interface Icpu {
 	virtual ~Icpu() {;}
-	virtual int create(void *argc) = 0;
+	virtual int create(Akvm *accel) = 0;
 	virtual int run(void) = 0;
 	virtual void destroy(void) = 0;
 	virtual void wait(void) = 0;
@@ -20,7 +21,7 @@ public:
 	Cpu(void);
 	~Cpu(void);
 public:
-	virtual int create(void *argc);
+	virtual int create(Akvm *accel);
 	virtual int run(void);
 	virtual void destroy(void);
 	virtual void wait(void);
@@ -32,7 +33,7 @@ private:
 private:
 	pthread_t m_thread;
 	sem_t m_run;
-	void *m_argc;
+	Akvm *m_accel;
 	volatile bool m_should_exit;
 	bool m_created;
 	bool m_running;

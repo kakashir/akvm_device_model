@@ -121,7 +121,11 @@ int main(int argc, char* argv[])
 		return r;
 	}
 
-	r = cpu.create(&g_akvm);
+	/*
+	  TODO: 'new Akvm' should be managed but not a fly object
+		when formal SMP supporting is added.
+	 */
+	r = cpu.create(new Akvm);
 	if (r) {
 		printf("cpu create failed: %d\n", r);
 		return r;

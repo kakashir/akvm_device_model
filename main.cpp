@@ -131,6 +131,12 @@ int main(int argc, char* argv[])
 		return r;
 	}
 
+	r = cpu.setup();
+	if (r) {
+		printf("cpu setup failed: %d\n", r);
+		return r;
+	}
+
 	cpu.set_startup_rip(startup_rip);
 	cpu.run();
 	cpu.wait();

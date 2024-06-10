@@ -99,6 +99,16 @@ exit_free:
 	return r_cpuid;
 }
 
+int Akvm::set_vcpu_cpuid(struct akvm_cpuid *cpuid)
+{
+	if (!cpuid)
+		return -EINVAL;
+	if (vcpu_fd < 0)
+		return -EINVAL;
+
+	return ioctl(vcpu_fd, AKVM_VCPU_SET_CPUID, cpuid);
+}
+
 int Akvm::create_vm(void)
 {
 	int fd;

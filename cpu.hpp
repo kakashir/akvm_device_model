@@ -10,6 +10,7 @@
 interface Icpu {
 	virtual ~Icpu() {;}
 	virtual int create(Akvm *accel) = 0;
+	virtual int setup(void) = 0;
 	virtual int run(void) = 0;
 	virtual void destroy(void) = 0;
 	virtual void wait(void) = 0;
@@ -22,6 +23,7 @@ public:
 	~Cpu(void);
 public:
 	virtual int create(Akvm *accel);
+	virtual int setup(void);
 	virtual int run(void);
 	virtual void destroy(void);
 	virtual void wait(void);
@@ -30,6 +32,9 @@ public:
 private:
 	int handle_exit(struct akvm_vcpu_runtime *runtime);
 	static void* vcpu_thread(void *cpu);
+	int setup_cpuid(void);
+	bool find_supported_cpuid(int leaf, int sub_leaf,
+				  akvm_cpuid_entry &data);
 private:
 	pthread_t m_thread;
 	sem_t m_run;

@@ -12,7 +12,7 @@ public:
 	int initialize(void);
 	void destroy(void);
 	struct akvm_cpuid* get_supported_cpuid(void);
-
+	int set_vcpu_cpuid(struct akvm_cpuid *cpuid);
 	int create_vm(void);
 	int create_vcpu(void);
 	int run_vcpu(void);

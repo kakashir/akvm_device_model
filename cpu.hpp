@@ -38,6 +38,7 @@ private:
 	bool m_created;
 	bool m_running;
 	gpa m_startup_rip;
+	struct akvm_vcpu_runtime *m_vcpu_runtime;
 
 };
 

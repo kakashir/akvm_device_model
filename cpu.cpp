@@ -8,6 +8,7 @@
 Cpu::Cpu(void):m_should_exit(false),
 	       m_created(false),m_running(false),
 	       m_accel(NULL),
+	       m_vcpu_runtime(NULL),
 	       m_startup_rip(0)
 {;}
 
@@ -23,6 +24,14 @@ int Cpu::create(Akvm *accel)
 	sem_init(&m_run, 0, 0);
 	r = pthread_create(&m_thread, NULL,
 			   vcpu_thread, this);
+	if (r)
+		return r;
+
+	r = accel->create_vcpu();
+	if (r)
+		return r;
+
+	r = accel->get_vcpu_runtime_info(&m_vcpu_runtime);
 	if (r)
 		return r;
 
@@ -82,19 +91,21 @@ int Cpu::handle_exit(struct akvm_vcpu_runtime *runtime)
 void* Cpu::vcpu_thread(void *_cpu)
 {
 	int r;
+	Cpu *cpu;
+	Akvm *accel;
 	struct akvm_vcpu_runtime *rt;
-	Cpu *cpu = reinterpret_cast<Cpu*>(_cpu);
-	Akvm *accel = cpu->m_accel;
+
+	cpu = reinterpret_cast<Cpu*>(_cpu);
 
 	sem_wait(&cpu->m_run);
 
-	r = accel->create_vcpu();
-	if (r)
-		goto exit;
+	/*
+	  Only get data after ordered to run.
+	  Other wise 'use before initialization'.
+	 */
 
-	r = accel->get_vcpu_runtime_info(&rt);
-	if (r)
-		goto exit;
+	rt = cpu->m_vcpu_runtime;
+	accel = cpu->m_accel;
 
 	accel->set_startup_rip(cpu->m_startup_rip);
 	while(!cpu->m_should_exit) {

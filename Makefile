@@ -7,7 +7,7 @@ akvm_dm: $(objects)
 	g++ $(objects) -o akvm_dm -O0 -g
 
 $(objects): %.o: %.cpp .phony_install_linux_headers
-	g++ -c "$<" -o "$@"
+	g++ -O0 -g -c "$<" -o "$@"
 
 .phony_install_linux_headers:
 	make -C /home/yy/src/linux/stable INSTALL_HDR_PATH=$(ROOT_DIR)/linux_header headers_install

@@ -152,8 +152,8 @@ int Cpu::setup_cpuid(void)
 	int r;
 
 	if (!find_supported_cpuid(0x80000000, 0, e)) {
-		printf("skip extend cpuid setup: 0x80000000 not supported\n");
-		return 0;
+		printf("skip extend cpuid setup: leaf 0x80000000 not supported\n");
+		goto basic_cpuid;
 	}
 
 	max_leaf = e.eax;
@@ -185,11 +185,45 @@ int Cpu::setup_cpuid(void)
 		tmp_cpuid.push_back(e);
 	}
 
+basic_cpuid:
+	/* basic cpuid range */
+	if (!find_supported_cpuid(0, 0, e)) {
+		printf("skip basic cpuid setup: leaf 0 not supported\n");
+		goto done;
+	}
+
+	max_leaf = e.eax;
+	tmp_cpuid.push_back(e);
+
+	for (unsigned int leaf = 0; leaf <= max_leaf; ++leaf) {
+		switch(leaf) {
+		case 1:
+			if (!find_supported_cpuid(leaf, 0, e)) {
+				printf("Skip setup cpuid leaf 1, accelerator doesn't support it.\n");
+				break;
+			}
+			/*
+			  TODO: Change to correct value when MP is supported
+			  for below ranges:
+			  Bit 31 - 24 The initial APIC ID field and
+			  Bit 23 - 16 Maximum number of addressable IDs for
+			  lps in this physical package
+			*/
+			e.ebx &= 0x0001ffff;
+			tmp_cpuid.push_back(e);
+			break;
+		default:
+			;
+		}
+	}
+
+done:
 	if (tmp_cpuid.empty())
 		return -1;
 
 	akvm_cpuid.entry = p = (struct akvm_cpuid_entry*)
 		malloc(sizeof(*akvm_cpuid.entry) * tmp_cpuid.size());
+
 	for (const struct akvm_cpuid_entry &i : tmp_cpuid)
 		*p++ = i;
 	akvm_cpuid.count = tmp_cpuid.size();

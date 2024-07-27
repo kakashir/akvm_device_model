@@ -122,7 +122,7 @@ void* Cpu::vcpu_thread(void *_cpu)
 		}
 
 		r = accel->run_vcpu();
-		if (!r)
+		if (!r || r == -EINTR)
 			continue;
 		if (r < 0) {
 			printf("run_vcpu: r:%d errno:%d\n", r, -errno);

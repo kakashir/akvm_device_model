@@ -177,6 +177,20 @@ int Akvm::remove_memory(gpa gpa_start, size_t size, hva hva_start)
 	return ioctl(Akvm::vm_fd, AKVM_MEMORY_SLOT_REMOVE, &slot);
 }
 
+int Akvm::replace_memory(struct akvm_memory_slot replace,
+			 struct akvm_memory_slot &old)
+{
+	int r;
+
+	if (Akvm::vm_fd < 0)
+		return -EINVAL;
+
+	r = ioctl(Akvm::vm_fd, AKVM_MEMORY_SLOT_REPLACE, &replace);
+	if (!r)
+		old = replace;
+	return r;
+}
+
 int Akvm::get_vcpu_runtime_info(struct akvm_vcpu_runtime** runtime)
 {
 	struct akvm_vcpu_runtime* rt;

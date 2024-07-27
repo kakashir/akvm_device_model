@@ -24,7 +24,16 @@ std::vector<memory_config> g_mem_config = {
 	  .size = MEM_BELOW_4G_END - MEM_BELOW_4G_START
 	},
 	{ .gpa_start = MEM_ABOVE_4G_START,
-	  .size = 1ULL * 1024  * 1024 * 1024
+	  .size = 256ULL * 1024  * 1024,
+	},
+	{ .gpa_start = MEM_ABOVE_4G_START + 1 * (256ULL * 1024  * 1024),
+	  .size = 256ULL * 1024  * 1024,
+	},
+	{ .gpa_start = MEM_ABOVE_4G_START + 2 * (256ULL * 1024  * 1024),
+	  .size = 256ULL * 1024  * 1024,
+	},
+	{ .gpa_start = MEM_ABOVE_4G_START + 3 * (256ULL * 1024  * 1024),
+	  .size = 256ULL * 1024  * 1024,
 	},
 };
 

@@ -10,7 +10,7 @@
 #include "memoryhub.hpp"
 #include "device_hub.hpp"
 #include "guest_loader.hpp"
-
+#include "dev_test.hpp"
 
 Akvm g_akvm;
 DeviceSerial g_serial;
@@ -97,6 +97,10 @@ int main(int argc, char* argv[])
 	int r;
 	Cpu cpu;
 	gpa startup_rip;
+
+#ifdef __DEV_TEST__
+	dev_test_memory_slot_repalce(g_akvm);
+#endif
 
 	r = g_akvm.initialize();
 	if (r) {

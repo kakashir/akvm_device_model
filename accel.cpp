@@ -212,12 +212,11 @@ int Akvm::get_vcpu_runtime_info(struct akvm_vcpu_runtime** runtime)
 	return 0;
 }
 
-void Akvm::set_startup_rip(gpa rip)
+int Akvm::set_startup_rip(gpa rip)
 {
 	if (vcpu_fd < 0)
-		return;
-	ioctl(vcpu_fd, AKVM_VCPU_SET_RIP, rip);
-	return;
+		return -EINVAL;
+	return ioctl(vcpu_fd, AKVM_VCPU_SET_RIP, rip);
 }
 
 int Akvm::dev_fd = -1;

@@ -114,7 +114,7 @@ void* Cpu::vcpu_thread(void *_cpu)
 	rt = cpu->m_vcpu_runtime;
 	accel = cpu->m_accel;
 
-	accel->set_startup_rip(cpu->m_startup_rip);
+	r = accel->set_startup_rip(cpu->m_startup_rip);
 	while(!cpu->m_should_exit) {
 		if (r) {
 			cpu->m_should_exit = true;

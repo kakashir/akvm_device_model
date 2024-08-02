@@ -22,7 +22,7 @@ public:
 	int replace_memory(struct akvm_memory_slot replace,
 			   struct akvm_memory_slot &old);
 	int get_vcpu_runtime_info(struct akvm_vcpu_runtime** runtime);
-	void set_startup_rip(gpa rip);
+	int set_startup_rip(gpa rip);
 private:
 	static int dev_fd;
 	static int vm_fd;

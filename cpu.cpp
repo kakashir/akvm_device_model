@@ -23,24 +23,30 @@ int Cpu::create(Akvm *accel)
 {
 	int r;
 
+	m_accel = accel;
+
 	sem_init(&m_run, 0, 0);
+	sem_init(&m_stop, 0, 0);
+
 	r = pthread_create(&m_thread, NULL,
 			   vcpu_thread, this);
 	if (r)
-		return r;
+		goto failed;
+	m_created = true;
+	m_running = false;
 
 	r = accel->create_vcpu();
 	if (r)
-		return r;
+		goto failed;
 
 	r = accel->get_vcpu_runtime_info(&m_vcpu_runtime);
 	if (r)
-		return r;
+		goto failed;
 
-	m_created = true;
-	m_running = false;
-	m_accel = accel;
-	return 0;
+	return r;
+ failed:
+	destroy();
+	return r;
 }
 
 int Cpu::setup(void)
@@ -67,8 +73,8 @@ void Cpu::destroy(void)
 	m_should_exit = true;
 	if (!m_running)
 		sem_post(&m_run);
-	else
-		sem_wait(&m_run);
+	sem_wait(&m_stop);
+
 	m_created = false;
 	m_running = false;
 }
@@ -132,7 +138,7 @@ void* Cpu::vcpu_thread(void *_cpu)
 		r = cpu->handle_exit(rt);
 	}
 exit:
-	sem_post(&cpu->m_run);
+	sem_post(&cpu->m_stop);
 	return NULL;
 }
 

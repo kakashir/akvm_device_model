@@ -38,6 +38,7 @@ private:
 private:
 	pthread_t m_thread;
 	sem_t m_run;
+	sem_t m_stop;
 	Akvm *m_accel;
 	volatile bool m_should_exit;
 	bool m_created;

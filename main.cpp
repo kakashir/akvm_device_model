@@ -102,6 +102,11 @@ int main(int argc, char* argv[])
 	dev_test_memory_slot_repalce(g_akvm);
 #endif
 
+	if (argc < 2) {
+		printf("usage: akvm_dm guest_kernel_image\n");
+		exit(0);
+	}
+
 	r = g_akvm.initialize();
 	if (r) {
 		printf("g_akvm: initialize failed: %d\n", r);
@@ -115,7 +120,7 @@ int main(int argc, char* argv[])
 		return r;
 	}
 
-	r = load_elf_guest_code("/home/yy/src/akvm_guest/binary",
+	r = load_elf_guest_code(argv[1],
 				get_memoryhub(), startup_rip);
 	if (r) {
 		printf("load guest code failed: %d\n", r);
